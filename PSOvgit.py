@@ -1,7 +1,6 @@
 """
 
-PSO : je check vite fait
-
+PSO :
 
 Sylvain JANNIN
 Evrard EMONOT--DE CAROLIS
@@ -158,10 +157,10 @@ class PSO:
 
 
     def update_best(self):
-        loss_best_all = self.forward(self.best_all)                         #compute forward of this ANN, return the output of the loss function for the best ALL
+        loss_best_all = self.forward_loss(self.best_all)                         #compute forward of this ANN, return the output of the loss function for the best ALL
         for particule in range(self.particule):                             #do a for loop for each particules
-            loss_best_alone = self.forward(self.best_alone[particule])      #Compute loss function of the best alone/personal
-            loss_actual = self.forward( self.weights[particule])            #compute loss function of the actual weight
+            loss_best_alone = self.forward_loss(self.best_alone[particule])      #Compute loss function of the best alone/personal
+            loss_actual = self.forward_loss( self.weights[particule])            #compute loss function of the actual weight
             if(loss_actual < loss_best_alone):                                 #If the current weights are better than the personal best
                 self.best_alone[particule] = self.weights[particule]            #Change the best alone for the actual weights
                 loss_best_alone = loss_actual
@@ -174,7 +173,7 @@ class PSO:
         z = np.dot(feature, weight)     
         return (1 / (1 + np.exp(-z)))   
 
-
+    """
     def check_accuracy(self, X, Y, weight):
         output = self.sigmoid(X, weight)
         output = np.round(output)
@@ -183,31 +182,25 @@ class PSO:
             if(output[i] == Y[i]):
                 check_true += 1
         return((check_true)/Y.shape[0])
-    
+    """
   
-    def forward(self, tab):     #forward propagation for one particule
-        Inputs = [self.X]       #list with all the inputs store
-        for layer in range(len(tab)):   #for 1 layer in all the ANN
-            Input = np.array(Inputs[-1])#Input is the last cell of Inputs          
-            out = self.sigmoid(Input,tab[layer].T)  #call the activation function
+
+    
+    
+    def forward(self, ANN_particule):     #forward propagation for one particule
+        Inputs = [self.X]                 #list with all the inputs store
+        for layer in range(len(ANN_particule)):   #for 1 layer in all the ANN
+            Input = np.array(Inputs[-1])          #Input is the last cell of Inputs          
+            out = self.sigmoid(Input,ANN_particule[layer].T)  #call the activation function
             out = np.array(out)                     #set as np.array
-            Inputs.append(out)                      #Inputs take the output as input for the next layer
-        
-        loss_output = PSO.loss(Inputs[-1], np.array(self.Y))    #call the loss function for the output of the ANN
+            Inputs.append(out)                      #Inputs take the output as input for the next layer        
+        return(Inputs[-1])                          #return the output activation function for one particule 
+
+    def forward_loss(self, tab):                             #forward propagation for one particule
+        output = self.forward(tab)                           #call forward propagation
+        loss_output = PSO.loss(output, np.array(self.Y))    #call the loss function for the output of the ANN
         
         return(loss_output)                         #return the output of the loss function for one particule
-    
-    
-    def forward_check(self, tab):
-        Inputs = [self.X]
-        for layer in range(len(tab)):
-            Input = np.array(Inputs[-1])
-            out = self.sigmoid(Input,tab[layer].T)
-            out = np.array(out)
-            Inputs.append(out)
-        
-        return(Inputs[-1])
-    
 
     def loss(h, y): #loss function        
         h = h.T[0]  
@@ -216,7 +209,7 @@ class PSO:
 
     def check_results(self, best_weight):    #this code comes from lab1
     
-        result = self.forward_check( best_weight)      #do on forward with the Weights we calculated
+        result = self.forward(best_weight)      #do on forward with the Weights we calculated
         f = pd.DataFrame(np.around(result, decimals=5)).join(self.Y)
         
         f['pred'] = f[0].apply(lambda x : 0 if x < 0.5 else 1)
@@ -383,17 +376,19 @@ if __name__ == "__main__":
     
     #tranning 
     for epoch in range(epochs):    
-        #ça devrait être l'inverse non ?     
-        my_pso.update_weights()     #update the weight with the PSO's logic
+        #ça devrait être l'inverse non ?             
         my_pso.update_best()        #update the weight by doing a forward propagation and calculating the loss function
+        my_pso.update_weights()     #update the weight with the PSO's logic
         print("training done at", (epoch+1)/epochs * 100, "%")
 
+    """
     moy_loss = 0    
     for i in range(my_pso.particule):#check, take of this it is useless
         moy_loss = my_pso.forward(my_pso.weights[i])
         #print(moy_loss)
-        
+    """
     
     #take the best weights it found during the tranning and do a last forward prpagation to check the accuracy and the confusion matrix
     my_pso.check_results(my_pso.best_all)
+    print(my_pso.best_all)
     
