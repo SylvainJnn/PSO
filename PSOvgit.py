@@ -1,6 +1,7 @@
 """
 
-PSO :
+PSO : je check vite fait
+
 
 Sylvain JANNIN
 Evrard EMONOT--DE CAROLIS
