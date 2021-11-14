@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 
 class PSO:
 
-
     def __init__(self, nb_particule , new_weights,val_inertia,spacing,param_hidden,initX,initY):  
         
         self.particule = nb_particule   #number of particles      
@@ -23,13 +22,13 @@ class PSO:
         self.dim = self.count_dimensions(new_weights) #number of inputs
         
         
-        self.values = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) #values is the list of weight for each particles
+        self.weights = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) #self.weights is a list of list of weight for each particles
         
         self.step = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) # is ANN corresponding of each particules but is used to store the step weight we will apply on our list of particles
-        self.best_alone = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) # is a copy of the list of particules but only storing the best value of the particules
+        self.best_alone = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) # is a copy of the list of particules but only storing the best weight of the particules
         self.best_all = self.generate_empty_ANN(nb_particule,spacing ,param_hidden ) # generating one empty ANN to then fill it with the best of all
         
-        self.inertia = val_inertia
+        self.inertia = val_inertia  
         
         self.X = initX
         self.Y = initY
@@ -118,63 +117,61 @@ class PSO:
     
     
     def display_ANN(self):
-        for i in range(len(self.values)):
+        for i in range(len(self.weights)):
             print("particule n°", i,end='\n\n\n')
             
-            for j in range(len(self.values[i])):
+            for j in range(len(self.weights[i])):
                 print("layer n°",j,end='\n\n')
                 
-                for k in range(len(self.values[i][j])):
+                for k in range(len(self.weights[i][j])):
                     print("node n°",k,end='\n\n')
                     
-                    for l in range(len(self.values[i][j][k])):
-                        print(self.values[i][j][k][l])
+                    for l in range(len(self.weights[i][j][k])):
+                        print(self.weights[i][j][k][l])
                     print("\n")
               
 
-    def update_values(self):
-        
-        self.update_step()
+    def update_weights(self): #update the weights for each particule  
+        self.update_step()    #update the step to correctly update the weights
         for i in range(self.particule):
-            self.values[i] = np.add(self.values[i], self.step[i])            
+            self.weights[i] = np.add(self.weights[i], self.step[i])   #update the weight wuth the PSO logic : take the actual position and add the new stape calculated in update_step()    
         
     
     def update_step(self):  #print to check things
         for i in range(self.particule):
-            best_c = 1.193
+            best_c = 1.193                  #
             c=best_c
             
-            inertia_component = np.multiply(self.inertia, self.step[i])
+            #since we use np.array we can't write the formula in one line which is : step = initia_component + cognitive_component + social_component
+ 
+            inertia_component = np.multiply(self.inertia, self.step[i]) # initia_component = self.inertia * self.step[i]
 
-            cognitive_component = np.subtract(self.best_alone[i], self.values[i])
-            cognitive_component = np.multiply(c, cognitive_component)
+            cognitive_component = np.subtract(self.best_alone[i], self.weights[i])  #update the step regarding its personal best 
+            cognitive_component = np.multiply(c, cognitive_component)               # cognitive_component = c*(self.best_alone[i] - self.weights[i])
 
-            social_component = np.subtract(self.best_all, self.values[i])
-            social_component = np.multiply(c, social_component)
+            social_component = np.subtract(self.best_all, self.weights[i])          #update the step regarding the global best
+            social_component = np.multiply(c, social_component)                     #social_component = c*(self.best_all - self.weights[i])
 
-            tpn = np.add(inertia_component, cognitive_component)
+            tpn = np.add(inertia_component, cognitive_component)    #store temporary the value in tpn 
             self.step[i] = np.add(tpn, social_component)
 
 
     def update_best(self):
-        loss_best_all = self.forward(self.best_all)     #compute forward of this ANN, return the Output of the lossfunction for the best ALL
-        for particule in range(self.particule):
-            loss_best_alone = self.forward(self.best_alone[particule])    #Compute loss function of the best alone/personal
-            loss_actual = self.forward( self.values[particule])            #compute loss function of the actual weight
-            if(loss_actual < loss_best_alone):                                 #If the /current weights are better than the personal best
-                self.best_alone[particule] = self.values[particule]            #Change the best alone of the actual weights
+        loss_best_all = self.forward(self.best_all)                         #compute forward of this ANN, return the output of the loss function for the best ALL
+        for particule in range(self.particule):                             #do a for loop for each particules
+            loss_best_alone = self.forward(self.best_alone[particule])      #Compute loss function of the best alone/personal
+            loss_actual = self.forward( self.weights[particule])            #compute loss function of the actual weight
+            if(loss_actual < loss_best_alone):                                 #If the current weights are better than the personal best
+                self.best_alone[particule] = self.weights[particule]            #Change the best alone for the actual weights
                 loss_best_alone = loss_actual
                 if(loss_actual < loss_best_all):                               #if the loss function of the actual weights are better than the global best weights 
-                    self.best_all = self.values[particule]                     #change
+                    self.best_all = self.weights[particule]                     #Change the best all for the actual weights
                     loss_best_all = loss_actual
 
-    #to update it has to do a forward propagation then instead of looking for minimum, look for maximum (accuracy)
-    #function ... --> forawrd --> check aqsccuracy --> % --> look for maximum
-    
 
-    def sigmoid(self,feature, weight):
-        z = np.dot(feature, weight)     # préactivation
-        return (1 / (1 + np.exp(-z)))   # activation 
+    def sigmoid(self,feature, weight):  # activation function
+        z = np.dot(feature, weight)     
+        return (1 / (1 + np.exp(-z)))   
 
 
     def check_accuracy(self, X, Y, weight):
@@ -187,18 +184,17 @@ class PSO:
         return((check_true)/Y.shape[0])
     
   
-    def forward(self, tab):
-        Inputs = [self.X]
-        for layer in range(len(tab)):
-            Input = np.array(Inputs[-1])
-            
-            out = self.sigmoid(Input,tab[layer].T)
-            out = np.array(out)
-            Inputs.append(out)
+    def forward(self, tab):     #forward propagation for one particule
+        Inputs = [self.X]       #list with all the inputs store
+        for layer in range(len(tab)):   #for 1 layer in all the ANN
+            Input = np.array(Inputs[-1])#Input is the last cell of Inputs          
+            out = self.sigmoid(Input,tab[layer].T)  #call the activation function
+            out = np.array(out)                     #set as np.array
+            Inputs.append(out)                      #Inputs take the output as input for the next layer
         
-        loss_output = PSO.loss(Inputs[-1], np.array(self.Y))
+        loss_output = PSO.loss(Inputs[-1], np.array(self.Y))    #call the loss function for the output of the ANN
         
-        return(loss_output)
+        return(loss_output)                         #return the output of the loss function for one particule
     
     
     def forward_check(self, tab):
@@ -212,13 +208,12 @@ class PSO:
         return(Inputs[-1])
     
 
-    def loss(h, y):
-        
-        h = h.T[0]
+    def loss(h, y): #loss function        
+        h = h.T[0]  
         return (-y * np.log(h) - (1 - y) * np.log(1 - h)).mean()
 
 
-    def check_results(self, best_weight):    #this code comes from the first lab1
+    def check_results(self, best_weight):    #this code comes from lab1
     
         result = self.forward_check( best_weight)      #do on forward with the Weights we calculated
         f = pd.DataFrame(np.around(result, decimals=5)).join(self.Y)
@@ -272,26 +267,10 @@ class PSO:
 
         print("F score = ", F1)
 
-#fucntions from the code from lab1 to open the data and use it
-def init_data():   
-        
-        data = pd.read_csv("iris.csv") #init les données
-        print("Dataset size")
-        print("Rows {} Columns {}".format(data.shape[0], data.shape[1]))
-        print("Columns and data types")
-        pd.DataFrame(data.dtypes).rename(columns = {0:'dtype'})#pour mieux s'en servir ? *
-        
-        df = data.copy() #pourquoi
-        
-        df["resultat"] = df["species"].apply(lambda x : 1 if(x == "setosa") else 0)
-        #X = df[["sepal_length", "petal_length", "petal_width"]].copy()
-        X = df[["sepal_length", "petal_length"]].copy()
-        Y = df["resultat"].copy() # should give another name
-        return(X,Y)
 
 
 #function use to init the data bank dataset
-def init_data2(file_name): 
+def init_data(file_name): 
     
     data = pd.read_csv(file_name) 
     Names = ["Input 1", "Input 2", "Input 3", "Input 4", "Outputs" ]
@@ -386,129 +365,34 @@ def plot_perceptrons(nodes,boundarie):
 
 if __name__ == "__main__":
 
-    X, Y = init_data2("data_banknote_authentication.txt") #•REPLACE X to x if you want to use iris dataset
+    X, Y = init_data("data_banknote_authentication.txt") #X is the feature and Y is the ....
 
-    best_inertia = 0.721
+    #parameters
+    best_inertia = 0.721    #best intertia values from ...
+    Layers = [2,3]          #setup the number of perceptron for each layer. The first cel is the inputlayer
+    Layers.append(1)        #add the output layer
+    epochs = 50             #number of epoch for the tranning
+    nb_particule = 60       #number of particule for the PSO
+    #activation fucntion !!!!
     
-    #UNCOMMENT IF YOU WANT TO USE IRIS DATASET
-    #X = x.to_numpy()
+    my_pso = PSO(nb_particule, [len(X[0])], best_inertia,1,Layers,X,Y) #creating the PSO
     
-    
-    print("X", X[0])
-    perceptron = PSO(60, [len(X[0])], best_inertia,1,[2,3,1],X,Y) #creatingg the PSO
-    
-    print("---WEIGHT FOR ANN VALUES----")
-    print(perceptron.values)  
-    
-    print('type tableau de perceptron', type(perceptron.values))
-    print('type tableau de layer', type(perceptron.values[0]))
-    print('type tableau de node', type(perceptron.values[0][0]))
-    print('type tableau de weifht', type(perceptron.values[0][0][0]))
-    print()
-    print('type weight', type(perceptron.values[0][0][0][0]))
-    print('type weight', perceptron.values[0][0][0])
-    print('type weight', perceptron.values[0][0])
-    
-    """
-    perceptron.display_ANN()
-    plot_dataset(X, Y)
-    """
-    
-    nb_iteration = 200
-    
-    #perceptron.forward(perceptron.values[1])
-    
-    for i in range(nb_iteration): #tranning
-        
-        perceptron.update_values()
-        perceptron.update_best() 
-        print(i/nb_iteration * 100)
 
-    moy_loss = 0
-    
-    print(perceptron.best_all)
-    for i in range(perceptron.particule):#check
-        moy_loss = perceptron.forward(perceptron.values[i])
-        print(moy_loss)
-        
-        
-    yomec = [np.array([[-0.25897943,  0.01110068, -0.47977551, -0.7991208 ], [-0.06125956,  0.55197473, -1.15921413, -0.40161609]]), 
-             np.array([[-0.55864311, -0.30252977],[-0.37617277, -0.29008031], [-0.41626232, -0.14662017]]),
-             np.array([[-0.02143717, -0.50451028,  0.20899994]])]
     
     
-    print(perceptron.values[1])
-    print()
-    print(perceptron.step[1])
-    print()
-    print(perceptron.best_alone[1])
-    print("au dessus c'est le best alone")
-    print(perceptron.best_all)
-    print()
-    
-    perceptron.check_results(perceptron.best_all)
-    #perceptron.forward2(perceptron.best_all)
-    
-    """
-    
-    [array([[-0.25897943,  0.01110068, -0.47977551, -0.7991208 ],
-        [-0.06125956,  0.55197473, -1.15921413, -0.40161609]])
- array([[-0.55864311, -0.30252977],
-        [-0.37617277, -0.29008031],
-        [-0.41626232, -0.14662017]])
- array([[-0.02143717, -0.50451028,  0.20899994]])]
-    """
-     
-    """   
-    
-    for i in range(perceptron.particule):
-        #print("je suis à la case :", perceptron.values[i])
-        check = perceptron.forward(perceptron.values[i])
-        #print("je suis une froward et j'aimes les algues ")
-        print(check)
-    
-    
-        
-        
-            
-         
-     
-    
-    print("----WEIGHT FOR ONE PERCEPTRON VALUES-----",perceptron.values)
+    #tranning 
+    for epoch in range(epochs):    
+        #ça devrait être l'inverse non ?     
+        my_pso.update_weights()     #update the weight with the PSO's logic
+        my_pso.update_best()        #update the weight by doing a forward propagation and calculating the loss function
+        print("training done at", (epoch+1)/epochs * 100, "%")
 
+    moy_loss = 0    
+    for i in range(my_pso.particule):#check, take of this it is useless
+        moy_loss = my_pso.forward(my_pso.weights[i])
+        #print(moy_loss)
         
     
+    #take the best weights it found during the tranning and do a last forward prpagation to check the accuracy and the confusion matrix
+    my_pso.check_results(my_pso.best_all)
     
-
-    test = perceptron.values
-    
-    
-    for i in range(nb_iteration):
-        perceptron.update_values()
-        perceptron.update_best_allP(X,Y)
-        #print("en cours trainning :", i/nb_iteration*100,"%")
-        
-        #UNCOMMENT IF YOU WANT TO PLOT FOR ONE PERCEPTRON
-        #plot_perceptrons2(perceptron.values,4)
-
-    moyenne = 0
-    moy_loss = 0
-    for i in range(perceptron.particule):
-        #print("je suis à la case :", perceptron.values[i])
-        moyenne +=  perceptron.check_accuracy(X,Y, perceptron.values[i])
-        moy_loss = perceptron.cross(X,Y,perceptron.values[i])
-        print(moy_loss)
-        #print("en cours check :", i/perceptron.particule*100,"%")
-
-    print("RESULTAT")
-    print(moyenne/perceptron.particule)
-    print(perceptron.best_all)
-    
-    """
-    
-"""
-
-intertie = 0.8188947556125247 --> 0.7
-
-
-"""
