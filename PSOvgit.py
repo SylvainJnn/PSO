@@ -15,21 +15,23 @@ import matplotlib.pyplot as plt
 
 class PSO:
 
-    def __init__(self, nb_particule , new_weights,val_inertia,spacing,param_hidden,initX,initY):  
+    def __init__(self, nb_particle , new_weights, val_inertia, spacing, param_hidden, activation_function, initX, initY):  
         
-        self.particule = nb_particule   #number of particles      
+        self.particle = nb_particle   #number of particles      
         self.list_weights = new_weights  #list of weight depending of the number of inputs
         self.dim = self.count_dimensions(new_weights) #number of inputs
         
         
-        self.weights = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) #self.weights is a list of list of weight for each particles
+        self.weights = self.generate_empty_ANN_list(nb_particle,spacing ,param_hidden ) #self.weights is a list of list of weight for each particles
         
-        self.step = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) # is ANN corresponding of each particules but is used to store the step weight we will apply on our list of particles
-        self.best_alone = self.generate_empty_ANN_list(nb_particule,spacing ,param_hidden ) # is a copy of the list of particules but only storing the best weight of the particules
-        self.best_all = self.generate_empty_ANN(nb_particule,spacing ,param_hidden ) # generating one empty ANN to then fill it with the best of all
+        self.step = self.generate_empty_ANN_list(nb_particle,spacing ,param_hidden ) # is ANN corresponding of each particles but is used to store the step weight we will apply on our list of particles
+        self.best_alone = self.generate_empty_ANN_list(nb_particle,spacing ,param_hidden ) # is a copy of the list of particles but only storing the best weight of the particles
+        self.best_all = self.generate_empty_ANN(nb_particle,spacing ,param_hidden ) # generating one empty ANN to then fill it with the best of all
         
         self.inertia = val_inertia  
         
+        self.activation_function = activation_function
+
         self.X = initX
         self.Y = initY
         
@@ -41,12 +43,12 @@ class PSO:
         return(dimensions)
 
 
-    def generate_empty_ANN_list(self,nb_particule , spacing, param_hidden ):
+    def generate_empty_ANN_list(self,nb_particle , spacing, param_hidden ):
         
         list_PSO = [] #ANN empty list
         
         
-        for i in range(nb_particule): #pour chaque particule
+        for i in range(nb_particle): #pour chaque particle
             
             list_layer = [] # we initialise a list of layers
             list_node = [] #we initialise a list of nodes
@@ -82,7 +84,7 @@ class PSO:
 
     
     
-    def generate_empty_ANN(self,nb_particule, spacing, param_hidden ):
+    def generate_empty_ANN(self,nb_particle, spacing, param_hidden ):
         
         list_layer = [] # we initialise a list of layers
         list_node = [] #we initialise a list of nodes
@@ -118,7 +120,7 @@ class PSO:
     
     def display_ANN(self):
         for i in range(len(self.weights)):
-            print("particule n°", i,end='\n\n\n')
+            print("particle n°", i,end='\n\n\n')
             
             for j in range(len(self.weights[i])):
                 print("layer n°",j,end='\n\n')
@@ -131,15 +133,15 @@ class PSO:
                     print("\n")
               
 
-    def update_weights(self): #update the weights for each particule  
+    def update_weights(self): #update the weights for each particle  
         self.update_step()    #update the step to correctly update the weights
-        for i in range(self.particule):
+        for i in range(self.particle):
             self.weights[i] = np.add(self.weights[i], self.step[i])   #update the weight wuth the PSO logic : take the actual position and add the new stape calculated in update_step()    
         
     
     def update_step(self):  #print to check things
-        for i in range(self.particule):
-            best_c = 1.193                  #
+        for i in range(self.particle):
+            best_c = 1.193                  #  1/2 + ln(2)
             c=best_c
             
             #since we use np.array we can't write the formula in one line which is : step = initia_component + cognitive_component + social_component
@@ -158,49 +160,54 @@ class PSO:
 
     def update_best(self):
         loss_best_all = self.forward_loss(self.best_all)                         #compute forward of this ANN, return the output of the loss function for the best ALL
-        for particule in range(self.particule):                             #do a for loop for each particules
-            loss_best_alone = self.forward_loss(self.best_alone[particule])      #Compute loss function of the best alone/personal
-            loss_actual = self.forward_loss( self.weights[particule])            #compute loss function of the actual weight
+        for particle in range(self.particle):                             #do a for loop for each particles
+            loss_best_alone = self.forward_loss(self.best_alone[particle])      #Compute loss function of the best alone/personal
+            loss_actual = self.forward_loss( self.weights[particle])            #compute loss function of the actual weight
             if(loss_actual < loss_best_alone):                                 #If the current weights are better than the personal best
-                self.best_alone[particule] = self.weights[particule]            #Change the best alone for the actual weights
+                self.best_alone[particle] = self.weights[particle]            #Change the best alone for the actual weights
                 loss_best_alone = loss_actual
                 if(loss_actual < loss_best_all):                               #if the loss function of the actual weights are better than the global best weights 
-                    self.best_all = self.weights[particule]                     #Change the best all for the actual weights
+                    self.best_all = self.weights[particle]                     #Change the best all for the actual weights
                     loss_best_all = loss_actual
 
-
-    def sigmoid(self,feature, weight):  # activation function
+    # activation function
+    def sigmoid(self,feature, weight):  
         z = np.dot(feature, weight)     
         return (1 / (1 + np.exp(-z)))   
 
-    """
-    def check_accuracy(self, X, Y, weight):
-        output = self.sigmoid(X, weight)
-        output = np.round(output)
-        check_true = 0
-        for i in range(X.shape[0]):
-            if(output[i] == Y[i]):
-                check_true += 1
-        return((check_true)/Y.shape[0])
-    """
-  
+    def tanh(self, feature, weight):
+        z = np.dot(feature, weight)
+        return(np.tanh(z))
 
+    def reLu(self, feature, weight):
+        z = np.dot(feature, weight)
+        z = z * (z > 0)
+        #z = z * (z < 1)
+        return z
     
-    
-    def forward(self, ANN_particule):     #forward propagation for one particule
+    def forward(self, ANN_particle):     #forward propagation for one particle
         Inputs = [self.X]                 #list with all the inputs store
-        for layer in range(len(ANN_particule)):   #for 1 layer in all the ANN
+        for layer in range(len(ANN_particle)):   #for 1 layer in all the ANN
             Input = np.array(Inputs[-1])          #Input is the last cell of Inputs          
-            out = self.sigmoid(Input,ANN_particule[layer].T)  #call the activation function
-            out = np.array(out)                     #set as np.array
-            Inputs.append(out)                      #Inputs take the output as input for the next layer        
-        return(Inputs[-1])                          #return the output activation function for one particule 
+            if(self.activation_function == "tanh"):
+                out = self.tanh(Input,ANN_particle[layer].T)    #call the activation function - tanh
+                out = (out +1)/2                                #with tanh we have to add an offset because tanh has value from -1 to 1 and loss function works from 0 to 1
+                out = np.array(out)                             #set as np.array
 
-    def forward_loss(self, tab):                             #forward propagation for one particule
+            elif(self.activation_function == "reLu"):
+                out = self.reLu(Input,ANN_particle[layer].T)    #call the activation function - reLu
+                out = np.array(out)                             #set as np.array
+            else:
+                out = self.sigmoid(Input,ANN_particle[layer].T)  #call the activation function - sigmoid
+                out = np.array(out)                     #set as np.array
+            Inputs.append(out)                      #Inputs take the output as input for the next layer        
+        return(Inputs[-1])                          #return the output activation function for one particle 
+
+    def forward_loss(self, tab):                             #forward propagation for one particle
         output = self.forward(tab)                           #call forward propagation
         loss_output = PSO.loss(output, np.array(self.Y))    #call the loss function for the output of the ANN
         
-        return(loss_output)                         #return the output of the loss function for one particule
+        return(loss_output)                         #return the output of the loss function for one particle
 
     def loss(h, y): #loss function        
         h = h.T[0]  
@@ -354,6 +361,11 @@ def plot_perceptrons(nodes,boundarie):
     plt.scatter(x_plot_1, y_plot_1)
     plt.show()
 
+def count_dimension(array):
+    sum = 0
+    for number in array:
+        sum += number
+    return(sum)
     
 
 
@@ -362,14 +374,18 @@ if __name__ == "__main__":
     X, Y = init_data("data_banknote_authentication.txt") #X is the feature and Y is the ....
 
     #parameters
-    best_inertia = 0.721    #best intertia values from ...
-    Layers = [2,3]          #setup the number of perceptron for each layer. The first cel is the inputlayer
+    best_inertia = 0.721    #best intertia values from paper -> 1/(2*ln(2))
+    Layers = []          #setup the number of perceptron for each layer. The first cel is the inputlayer 
     Layers.append(1)        #add the output layer
-    epochs = 50             #number of epoch for the tranning
-    nb_particule = 60       #number of particule for the PSO
-    #activation fucntion !!!!
+    epochs = 700            #number of epoch for the tranning
     
-    my_pso = PSO(nb_particule, [len(X[0])], best_inertia,1,Layers,X,Y) #creating the PSO
+    nb_dimension = count_dimension(Layers)
+    
+    nb_particle = 10 + 2*int((nb_dimension)**(1/2))      #number of particle for the PSO -> 10 + 2*sqrt(number of dimension) #or 40
+    print(nb_particle)
+    activation_function = "reLu"
+    
+    my_pso = PSO(nb_particle, [len(X[0])], best_inertia,1,Layers, activation_function, X,Y) #creating the PSO
     
 
     
@@ -380,15 +396,6 @@ if __name__ == "__main__":
         my_pso.update_best()        #update the weight by doing a forward propagation and calculating the loss function
         my_pso.update_weights()     #update the weight with the PSO's logic
         print("training done at", (epoch+1)/epochs * 100, "%")
-
-    """
-    moy_loss = 0    
-    for i in range(my_pso.particule):#check, take of this it is useless
-        moy_loss = my_pso.forward(my_pso.weights[i])
-        #print(moy_loss)
-    """
-    
+        
     #take the best weights it found during the tranning and do a last forward prpagation to check the accuracy and the confusion matrix
     my_pso.check_results(my_pso.best_all)
-    print(my_pso.best_all)
-    
